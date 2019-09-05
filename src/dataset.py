@@ -72,6 +72,8 @@ class TurbDataset(Dataset):
  
         self.inputs[:,:,:,0]=rawDataNorm[:,0:5,0:128]
         self.targets[:,:,:,0]=rawDataNorm[:,5:,0:128]
+        self.totalLength = self.inputs.shape[0]
+
 
 
         if not (mode==self.TRAIN or mode==self.TEST):
@@ -89,11 +91,10 @@ class TurbDataset(Dataset):
         self.dataDir = dataDir
         self.dataDirTest = dataDirTest # only for mode==self.TEST
 
-        # load & normalize data
-        self = LoaderNormalizer(self, isTest=(mode==self.TEST), dataProp=dataProp, shuffle=shuffle)
 
         if not self.mode==self.TEST:
             # split for train/validation sets (80/20) , max 400
+
             targetLength = self.totalLength - min( int(self.totalLength*0.2) , 400)
 
             self.valiInputs = self.inputs[targetLength:]
@@ -102,7 +103,8 @@ class TurbDataset(Dataset):
 
             self.inputs = self.inputs[:targetLength]
             self.targets = self.targets[:targetLength]
-            self.totalLength = self.inputs.shape[0]
+            self.totalLength = targetLength
+
 
     def __len__(self):
         return self.totalLength
