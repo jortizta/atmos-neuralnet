@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 import numpy as np
 from os import listdir
 import random
+import pandas as pd
 
 # global switch, use fixed max values for dim-less airfoil data?
 fixedAirfoilNormalization = True
