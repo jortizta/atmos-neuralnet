@@ -50,8 +50,8 @@ class TurbDataset(Dataset):
         :param normMode: toggle normalization
         """        
 
-        self.inputs=np.empty((len(files),5,128,1))
-        self.targets=np.empty((len(files),2,128,1))
+        self.inputs=np.empty((1280,5,128,1))
+        self.targets=np.empty((1280,2,128,1))
 
         rawData = []
         for t in range(0,5):
