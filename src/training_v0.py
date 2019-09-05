@@ -19,6 +19,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 import dataset
 import utils
+from progressbar import progress_bar
 
 #%%
 
@@ -44,10 +45,10 @@ saveL1 = False
 
 ##########################
 
-#prefix = ""
-#if len(sys.argv)>1:
-#    prefix = sys.argv[1]
-#    print("Output prefix: {}".format(prefix))
+prefix = ""
+if len(sys.argv)>1:
+    prefix = sys.argv[1]
+    print("Output prefix: {}".format(prefix))
 
 autoIter   = False
 dropout    = 0.
@@ -65,7 +66,7 @@ print("Random seed: {}".format(seed))
 random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
-#torch.cuda.manual_seed_all(seed)
+torch.cuda.manual_seed_all(seed)
 #torch.backends.cudnn.deterministic=True # warning, slower
 
 # create pytorch data object with dfp dataset
@@ -89,17 +90,17 @@ netG.apply(weights_init)
 if len(doLoad)>0:
     netG.load_state_dict(torch.load(doLoad))
     print("Loaded model "+doLoad)
-netG.cpu()
+netG.cuda()
 
 criterionL1 = nn.L1Loss()
-criterionL1.cpu()
+criterionL1.cuda()
 
 optimizerG = optim.Adam(netG.parameters(), lr=lrG, betas=(0.5, 0.999), weight_decay=0.0)
 
 targets = Variable(torch.FloatTensor(batch_size, 2, 128, 1))
 inputs  = Variable(torch.FloatTensor(batch_size, 5, 128, 1))
-targets = targets.cpu()
-inputs  = inputs.cpu()
+targets = targets.cuda()
+inputs  = inputs.cuda()
 
 #%%
 
@@ -116,7 +117,7 @@ for epoch in range(epochs):
         inputs_cpu, targets_cpu = traindata
         current_batch_size = targets_cpu.size(0)
 
-        targets_cpu, inputs_cpu = targets_cpu.float().cpu(), inputs_cpu.float().cpu()
+        targets_cpu, inputs_cpu = targets_cpu.float().cuda(), inputs_cpu.float().cuda()
         inputs.data.resize_as_(inputs_cpu).copy_(inputs_cpu)
         targets.data.resize_as_(targets_cpu).copy_(targets_cpu)
 
@@ -138,10 +139,15 @@ for epoch in range(epochs):
         lossL1viz = lossL1.item()
         L1_accum += lossL1viz
         samples_accum += current_batch_size
+        progress_bar(i, len(trainLoader), 'Train [{}/{} ({:.0f}%)]\t Loss: {:.6f}'.format(
+                i , len(trainLoader),
+                100. * i / len(trainLoader), L1_accum/(i+1)))
+
+
 
         if i==len(trainLoader)-1:
             logline = "Epoch: {}, batch-idx: {}, L1: {}\n".format(epoch, i, lossL1viz)
-            print(logline)
+            #print(logline)
 
 
     # validation
@@ -151,7 +157,7 @@ for epoch in range(epochs):
         inputs_cpu, targets_cpu = validata
         current_batch_size = targets_cpu.size(0)
 
-        targets_cpu, inputs_cpu = targets_cpu.float().cpu(), inputs_cpu.float().cpu()
+        targets_cpu, inputs_cpu = targets_cpu.float().cuda(), inputs_cpu.float().cuda()
         inputs.data.resize_as_(inputs_cpu).copy_(inputs_cpu)
         targets.data.resize_as_(targets_cpu).copy_(targets_cpu)
 
@@ -161,14 +167,22 @@ for epoch in range(epochs):
         lossL1 = criterionL1(outputs, targets)
         L1val_accum += lossL1.item()
 
+
+        progress_bar(i, len(valiLoader), 'Test [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t\t'.format(
+                i , len(valiLoader),
+                100. * i / len(valiLoader), L1val_accum/(i+1)))
+
+
         if i==0:
             input_ndarray = inputs_cpu.cpu().numpy()[0]
             v_norm = ( np.max(np.abs(input_ndarray[0,:,:]))**2 + np.max(np.abs(input_ndarray[1,:,:]))**2 )**0.5
+            #print(outputs[0]-targets[0])
+            #print(targets[0])
 
-            outputs_denormalized = data.denormalize(outputs_cpu[0], v_norm)
-            targets_denormalized = data.denormalize(targets_cpu.cpu().numpy()[0], v_norm)
-            utils.makeDirs(["results_train"])
-            utils.imageOut("results_train/epoch{}_{}".format(epoch, i), outputs_denormalized, targets_denormalized, saveTargets=True)
+            #outputs_denormalized = data.denormalize(outputs_cpu[0], v_norm)
+            #targets_denormalized = data.denormalize(targets_cpu.cpu().numpy()[0], v_norm)
+            #utils.makeDirs(["results_train"])
+            #utils.imageOut("results_train/epoch{}_{}".format(epoch, i), outputs_denormalized, targets_denormalized, saveTargets=True)
 
     # data for graph plotting
     L1_accum    /= len(trainLoader)
