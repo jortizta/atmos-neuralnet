@@ -41,7 +41,7 @@ class TurbDataset(Dataset):
     TRAIN = 0
     TEST  = 2
 
-    def __init__(self, dataProp=None, mode=TRAIN, dataDir="../data/", dataDirTest="../data/", shuffle=0, normMode=0):
+    def __init__(self, dataProp=None, mode=TRAIN, dataDir="../data/", dataDirTest="../data/", shuffle=0, normMode=0, nSample=5):
         global makeDimLess, removePOffset
         """
         :param dataProp: for split&mix from multiple dirs, see LoaderNormalizer; None means off
@@ -51,17 +51,36 @@ class TurbDataset(Dataset):
         :param normMode: toggle normalization
         """        
 
-        self.inputs=np.empty((1280,5,128,1))
-        self.targets=np.empty((1280,2,128,1))
-
+        self.inputs=np.empty((int(nSample*256),7,128,1))
+        self.targets=np.empty((int(nSample*256),2,128,1))
+        zm = np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150,
+                160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290,
+                300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430,
+                440, 450, 460, 470, 480, 490, 500, 510, 520, 530, 540, 550, 560, 570,
+                580, 590, 600, 610, 620, 630, 640, 650, 660, 670, 680, 690, 700, 710,
+                720, 730, 740, 750, 760, 770, 780, 789.0909, 797.3553, 804.8685,
+                811.6987, 817.9079, 823.5526, 828.6842, 833.6842, 838.6842, 843.6842,
+                848.6842, 853.6842, 858.6842, 863.6842, 868.6842, 873.6842, 878.6842,
+                883.6842, 888.6842, 893.6842, 898.6842, 903.6842, 908.6842, 913.6842,
+                918.6842, 923.6842, 928.6842, 934.1842, 940.2342, 946.8892, 954.2097,
+                962.2623, 971.1201, 980.8636, 991.5815, 1003.371, 1016.34, 1030.606,
+                1046.298, 1063.559, 1082.547, 1103.433, 1126.408, 1151.68, 1179.48,
+                1210.059, 1243.697, 1280.698, 1321.399, 1366.171, 1415.419, 1469.593])
         rawData = []
-        for t in range(0,5):
+        for t in range(nSample):
           for snum in range(256):
-            f = pd.read_csv(dataDir+'train_t_'+str(t).zfill(2)+'_slice_'+str(snum).zfill(3)+'.csv', header=None)
-            rawData.append(f.values)
+            # changed from csv to npy files
+            f = np.load(dataDir+'train_t_'+str(t).zfill(2)+'_slice_'+str(snum).zfill(3)+'.npy')# pd.read_csv(dataDir+'train_t_'+str(t).zfill(2)+'_slice_'+str(snum).zfill(3)+'.csv', header=None)
+            rawData.append(f)
 
         rawData = np.array(rawData)
-
+        thl = rawData[:,3,:]
+        qt  = rawData[:,4,:]
+        thl_gradient = np.gradient(thl,zm,axis=1)     
+        qt_gradient = np.gradient(qt,zm,axis=1)
+        rawData = np.concatenate((rawData,thl_gradient[:,np.newaxis,:]),axis=1)
+        rawData = np.concatenate((rawData,qt_gradient[:,np.newaxis,:]),axis=1)
+        np.random.shuffle(rawData) # shuffle to prevent coherent data input
 
         rawDataMean=np.mean(rawData,axis=0)
         rawDataF= rawData-rawDataMean[np.newaxis,:,:]
@@ -69,9 +88,10 @@ class TurbDataset(Dataset):
         rawDataNorm= rawDataF/sDev[np.newaxis,:,:]
 
         rawDataNorm[np.isnan(rawDataNorm)] = 0
- 
-        self.inputs[:,:,:,0]=rawDataNorm[:,0:5,0:128]
-        self.targets[:,:,:,0]=rawDataNorm[:,5:,0:128]
+
+        self.inputs[:,0:5,:,0]=rawDataNorm[:,0:5,0:128]
+        self.inputs[:,5:7,:,0]=rawDataNorm[:,7:9,0:128]
+        self.targets[:,:,:,0]=rawDataNorm[:,5:7,0:128]
         self.totalLength = self.inputs.shape[0]
 
 

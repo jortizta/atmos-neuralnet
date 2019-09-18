@@ -20,21 +20,22 @@ import matplotlib.pyplot as plt
 import dataset
 import utils
 from progressbar import progress_bar
+from torch.utils.tensorboard import SummaryWriter
 
 #%%
 
 ######## Settings ########
 
 # number of training iterations
-iterations = 10000
+iterations = 2000
 # batch size
-batch_size = 10
+batch_size = 64
 # learning rate, generator
 lrG = 0.0006
 # decay learning rate?
 decayLr = True
 # channel exponent to control network size
-expo = 5
+expo = 6
 # data set config
 prop=None # by default, use all from "../data/train"
 #prop=[1000,0.75,0,0.25] # mix data from multiple directories
@@ -61,6 +62,11 @@ doLoad     = ""
 
 ##########################
 
+#################################################
+### Visualize erros
+#################################################
+writer = SummaryWriter()
+
 seed = random.randint(0, 2**32 - 1)
 print("Random seed: {}".format(seed))
 random.seed(seed)
@@ -71,7 +77,7 @@ torch.cuda.manual_seed_all(seed)
 
 # create pytorch data object with dfp dataset
 
-data = dataset.TurbDataset(shuffle=1)
+data = dataset.TurbDataset(shuffle=1, nSample=20)
 trainLoader = DataLoader(data, batch_size=batch_size, shuffle=True, drop_last=True)
 print("Training batches: {}".format(len(trainLoader)))
 dataValidation = dataset.ValiDataset(data)
@@ -98,7 +104,7 @@ criterionL1.cuda()
 optimizerG = optim.Adam(netG.parameters(), lr=lrG, betas=(0.5, 0.999), weight_decay=0.0)
 
 targets = Variable(torch.FloatTensor(batch_size, 2, 128, 1))
-inputs  = Variable(torch.FloatTensor(batch_size, 5, 128, 1))
+inputs  = Variable(torch.FloatTensor(batch_size, 7, 128, 1))
 targets = targets.cuda()
 inputs  = inputs.cuda()
 
@@ -139,11 +145,15 @@ for epoch in range(epochs):
         lossL1viz = lossL1.item()
         L1_accum += lossL1viz
         samples_accum += current_batch_size
-        progress_bar(i, len(trainLoader), 'Train [{}/{} ({:.0f}%)]\t Loss: {:.6f}'.format(
+
+        # progress_bar(i, len(trainLoader), 'Train [{}/{} ({:.0f}%)]\t Loss: {:.6f}'.format(
+        #         i , len(trainLoader),
+        #         100. * i / len(trainLoader), L1_accum/(i+1)))
+        if(i == len(trainLoader)-1):
+            print('Train [{}/{} ({:.0f}%)]\t Loss: {:.6f}'.format(
                 i , len(trainLoader),
                 100. * i / len(trainLoader), L1_accum/(i+1)))
-
-
+        writer.add_scalars('training', {'L1 accum': L1_accum/(i+1)}, i)
 
         if i==len(trainLoader)-1:
             logline = "Epoch: {}, batch-idx: {}, L1: {}\n".format(epoch, i, lossL1viz)
@@ -168,11 +178,14 @@ for epoch in range(epochs):
         L1val_accum += lossL1.item()
 
 
-        progress_bar(i, len(valiLoader), 'Test [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t\t'.format(
+        # progress_bar(i, len(valiLoader), 'Test [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t\t'.format(
+        #         i , len(valiLoader),
+        #         100. * i / len(valiLoader), L1val_accum/(i+1)))
+        if(i == len(valiLoader)-1):
+            print('Test [{}/{} ({:.0f}%)]\tLoss: {:.6f}\t\t'.format(
                 i , len(valiLoader),
                 100. * i / len(valiLoader), L1val_accum/(i+1)))
-
-
+        writer.add_scalars('validation', {'L1 val accum': L1val_accum/(i+1)}, i)
         if i==0:
             input_ndarray = inputs_cpu.cpu().numpy()[0]
             v_norm = ( np.max(np.abs(input_ndarray[0,:,:]))**2 + np.max(np.abs(input_ndarray[1,:,:]))**2 )**0.5

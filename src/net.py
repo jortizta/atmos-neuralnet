@@ -42,7 +42,7 @@ class TurbNetG(nn.Module):
         channels = int(2 ** channelExponent + 0.5)
 
         self.layer1 = nn.Sequential()
-        self.layer1.add_module('layer1_conv', nn.Conv2d(5, channels, kernel_size=[4,1], stride=2, padding=[1,0], bias=True))
+        self.layer1.add_module('layer1_conv', nn.Conv2d(7, channels, kernel_size=[4,1], stride=2, padding=[1,0], bias=True))
 
         self.layer2 = blockUNet(channels  , channels*2, 'layer2', transposed=False, bn=True,  relu=False, dropout=dropout )
         self.layer2b= blockUNet(channels*2, channels*2, 'layer2b',transposed=False, bn=True,  relu=False, dropout=dropout )
@@ -99,7 +99,7 @@ class TurbNetG(nn.Module):
         #print('dout2.shape',dout2.shape)
         dout2_out1 = torch.cat([dout2, out1], 1)
         dout1 = self.dlayer1(dout2_out1)
-
+        # dout1 = dout1[:,:,0:95,:]
         #print('dout1.shape',dout1.shape)
         return dout1
 
