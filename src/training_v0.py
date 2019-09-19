@@ -27,7 +27,7 @@ from torch.utils.tensorboard import SummaryWriter
 ######## Settings ########
 
 # number of training iterations
-iterations = 2000
+iterations = 4000
 # batch size
 batch_size = 64
 # learning rate, generator
@@ -77,7 +77,7 @@ torch.cuda.manual_seed_all(seed)
 
 # create pytorch data object with dfp dataset
 
-data = dataset.TurbDataset(shuffle=1, nSample=20)
+data = dataset.TurbDataset(shuffle=1, nSample=19)
 trainLoader = DataLoader(data, batch_size=batch_size, shuffle=True, drop_last=True)
 print("Training batches: {}".format(len(trainLoader)))
 dataValidation = dataset.ValiDataset(data)
